@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>フレックスボックス ジェネレーター</title>
+<style>
+:root{
+  --bg:#f3f6f4;--surface:#ffffff;--ink:#16302b;--sub:#5c7370;--line:#d3ddd9;
+  --accent:#0f766e;--accent-ink:#ffffff;--item:#f59e0b;--item-ink:#3b2300;--code-bg:#16302b;--code-ink:#d9f2ea;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1b18;--surface:#152723;--ink:#e3f1ec;--sub:#97b0aa;--line:#2a403b;
+    --accent:#2dd4bf;--accent-ink:#06211d;--item:#f59e0b;--item-ink:#2b1a00;--code-bg:#0a1311;--code-ink:#d9f2ea;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1b18;--surface:#152723;--ink:#e3f1ec;--sub:#97b0aa;--line:#2a403b;
+  --accent:#2dd4bf;--accent-ink:#06211d;--code-bg:#0a1311;--code-ink:#d9f2ea;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+h1{font-size:1.25rem;margin:8px 0 14px;letter-spacing:.02em}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.stage{background:var(--surface);border:1px dashed var(--accent);border-radius:12px;min-height:220px;padding:8px;margin-bottom:14px;overflow:hidden}
+.stage .box{display:flex;min-height:200px;width:100%}
+.item{background:var(--item);color:var(--item-ink);border-radius:8px;min-width:46px;min-height:46px;padding:10px 14px;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:1rem}
+.ctrl{margin-bottom:12px}
+.ctrl:last-child{margin-bottom:0}
+.ctrl>label{display:block;font-size:.85rem;font-weight:700;margin-bottom:6px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{flex:1 1 auto;min-height:40px;padding:6px 10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;font:inherit;font-size:.85rem;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input[type=range]{flex:1;min-width:140px;accent-color:var(--accent)}
+.val{min-width:3.2em;text-align:right;font-variant-numeric:tabular-nums;font-size:.9rem}
+.stepper{display:flex;gap:8px;align-items:center}
+.stepper button{width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:1.2rem;cursor:pointer}
+.stepper span{min-width:2em;text-align:center;font-weight:700}
+pre{margin:0;background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:14px;overflow-x:auto;font-size:.85rem;line-height:1.7;font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace}
+.copy{display:block;width:100%;margin-top:10px;min-height:52px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-size:1.05rem;font-weight:700;cursor:pointer}
+.copy:active{transform:scale(.99)}
+.copy:focus-visible,.seg button:focus-visible,.stepper button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.hint{font-size:.8rem;color:var(--sub);margin:6px 0 0}
+.sel{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+@media (prefers-reduced-motion:no-preference){.item{transition:all .2s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>フレックスボックス ジェネレーター</h1>
+
+  <div class="stage"><div class="box" id="box"></div></div>
+
+  <div class="panel" id="container">
+    <div class="ctrl"><label>flex-direction（並ぶ向き）</label><div class="seg" data-prop="flexDirection"></div></div>
+    <div class="ctrl"><label>justify-content（主軸の配置）</label><div class="seg" data-prop="justifyContent"></div></div>
+    <div class="ctrl"><label>align-items（交差軸の配置）</label><div class="seg" data-prop="alignItems"></div></div>
+    <div class="ctrl"><label>flex-wrap（折り返し）</label><div class="seg" data-prop="flexWrap"></div></div>
+    <div class="ctrl"><label>gap（すき間）</label>
+      <div class="row"><input type="range" id="gap" min="0" max="48" value="12"><span class="val" id="gapv">12px</span></div></div>
+    <div class="ctrl"><label>アイテムの数</label>
+      <div class="stepper"><button id="minus" aria-label="減らす">−</button><span id="count">4</span><button id="plus" aria-label="増やす">＋</button></div></div>
+  </div>
+
+  <div class="panel">
+    <div class="ctrl"><label>個別アイテムの設定（タップして選ぶ）</label>
+      <div class="sel" id="sel"></div>
+      <div class="ctrl"><label>align-self</label><div class="seg" data-iprop="alignSelf"></div></div>
+      <div class="row"><label style="margin:0">flex-grow</label><input type="range" id="grow" min="0" max="5" value="0"><span class="val" id="growv">0</span></div>
+      <p class="hint">選んだアイテムだけに効くCSSが、下のコードに追加されます。</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <pre id="code"></pre>
+    <button class="copy" id="copy">CSSをコピー</button>
+  </div>
+</div>
+
+<script>
+var opts={
+  flexDirection:["row","row-reverse","column","column-reverse"],
+  justifyContent:["flex-start","center","flex-end","space-between","space-around","space-evenly"],
+  alignItems:["stretch","flex-start","center","flex-end","baseline"],
+  flexWrap:["nowrap","wrap","wrap-reverse"]
+};
+var itemOpts={alignSelf:["auto","flex-start","center","flex-end","stretch"]};
+var state={flexDirection:"row",justifyContent:"flex-start",alignItems:"stretch",flexWrap:"nowrap",gap:12,count:4};
+var items={}; // index -> {alignSelf, grow}
+var selected=0;
+var box=document.getElementById("box");
+
+function kebab(s){return s.replace(/[A-Z]/g,function(m){return "-"+m.toLowerCase()})}
+
+function buildSeg(el,list,get,set){
+  el.innerHTML="";
+  list.forEach(function(v){
+    var b=document.createElement("button");
+    b.type="button";b.textContent=v;
+    b.setAttribute("aria-pressed",String(get()===v));
+    b.onclick=function(){set(v);render()};
+    el.appendChild(b);
+  });
+}
+
+function render(){
+  document.querySelectorAll("[data-prop]").forEach(function(el){
+    var p=el.getAttribute("data-prop");
+    buildSeg(el,opts[p],function(){return state[p]},function(v){state[p]=v});
+  });
+  var it=items[selected]||{alignSelf:"auto",grow:0};
+  document.querySelectorAll("[data-iprop]").forEach(function(el){
+    buildSeg(el,itemOpts.alignSelf,function(){return it.alignSelf},function(v){
+      items[selected]=Object.assign({alignSelf:"auto",grow:0},items[selected],{alignSelf:v});
+    });
+  });
+  document.getElementById("grow").value=it.grow;
+  document.getElementById("growv").textContent=it.grow;
+  document.getElementById("gapv").textContent=state.gap+"px";
+  document.getElementById("count").textContent=state.count;
+
+  // selector chips
+  var sel=document.getElementById("sel");sel.innerHTML="";
+  var seg=document.createElement("div");seg.className="seg";
+  for(var i=0;i<state.count;i++){(function(i){
+    var b=document.createElement("button");b.type="button";b.textContent=i+1;
+    b.setAttribute("aria-pressed",String(i===selected));
+    b.onclick=function(){selected=i;render()};
+    seg.appendChild(b);
+  })(i)}
+  sel.appendChild(seg);
+
+  // preview
+  box.style.flexDirection=state.flexDirection;
+  box.style.justifyContent=state.justifyContent;
+  box.style.alignItems=state.alignItems;
+  box.style.flexWrap=state.flexWrap;
+  box.style.gap=state.gap+"px";
+  box.innerHTML="";
+  for(var j=0;j<state.count;j++){
+    var d=document.createElement("div");d.className="item";d.textContent=j+1;
+    var c=items[j];
+    if(c){d.style.alignSelf=c.alignSelf;d.style.flexGrow=c.grow}
+    // make baseline visible and varied sizes
+    d.style.fontSize=(j%2?"1.4rem":"1rem");
+    box.appendChild(d);
+  }
+  updateCode();
+}
+
+function updateCode(){
+  var css=".container {\n  display: flex;\n";
+  ["flexDirection","justifyContent","alignItems","flexWrap"].forEach(function(p){
+    css+="  "+kebab(p)+": "+state[p]+";\n";
+  });
+  css+="  gap: "+state.gap+"px;\n}\n";
+  Object.keys(items).forEach(function(k){
+    var c=items[k],lines=[];
+    if(c.alignSelf!=="auto")lines.push("  align-self: "+c.alignSelf+";");
+    if(c.grow>0)lines.push("  flex-grow: "+c.grow+";");
+    if(lines.length)css+="\n.item:nth-child("+(+k+1)+") {\n"+lines.join("\n")+"\n}\n";
+  });
+  document.getElementById("code").textContent=css.trim();
+}
+
+document.getElementById("gap").oninput=function(e){state.gap=+e.target.value;render()};
+document.getElementById("grow").oninput=function(e){
+  items[selected]=Object.assign({alignSelf:"auto",grow:0},items[selected],{grow:+e.target.value});render();
+};
+document.getElementById("plus").onclick=function(){if(state.count<12){state.count++;render()}};
+document.getElementById("minus").onclick=function(){
+  if(state.count>1){state.count--;if(selected>=state.count)selected=state.count-1;render()}
+};
+document.getElementById("copy").onclick=function(){
+  var btn=this,text=document.getElementById("code").textContent;
+  function done(){btn.textContent="コピーしました";setTimeout(function(){btn.textContent="CSSをコピー"},1600)}
+  function fallback(){
+    var ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand("copy");done()}catch(e){btn.textContent="コピーできませんでした"}
+    document.body.removeChild(ta);
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,fallback)}else{fallback()}
+};
+render();
+</script>
+</body>
+</html>
